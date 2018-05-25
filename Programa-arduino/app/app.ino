@@ -18,6 +18,21 @@ HTTP http(9600, RX_PIN, TX_PIN, RST_PIN,true);
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensor(&oneWire);
 
+//configuração do sensor de energia
+int pinoSensor =A0;
+ 
+int sensorValue_aux = 0;
+float valorSensor = 0;
+float valorCorrente = 0;
+float voltsporUnidade = 0.004887586;// 5%1023
+// Para ACS712 de  5 Amperes use 0.185
+// Para ACS712 de 10 Amperes use 0.100
+//  Para ACS712 de 5 Amperes use 0.066
+float sensibilidade = 0.066;
+ 
+//Tensao da rede AC 110 Volts e na verdade (127 volts)
+int tensao = 127;
+
 void setup(void)
 {
   //Inicia a Serial
@@ -25,6 +40,8 @@ void setup(void)
   Serial.println("Sensor de temperatura Dallas DS18b20");
   //Inicia o objeto da biblioteca do Dallas
   sensor.begin();
+
+  pinMode(pinoSensor, INPUT); 
 }
 
 
@@ -39,16 +56,21 @@ void loop(void)
    float leitura2=sensor.getTempCByIndex(2);
 
    //Imprime na serial a varivel que recebe os dados do Sensor
-  Serial.println("Primeiro sensor");  
+   Serial.println("Primeiro sensor");  
    Serial.println(leitura); 
 
    Serial.println("Segundo sensor");  
    Serial.println(leitura2);  
+   
+  // salva("https://umonitor-api.herokuapp.com/dados/sensor/1001",leitura);
+  // salva("https://umonitor-api.herokuapp.com/dados/sensor/1002",leitura2); 
 
-   salva("https://umonitor-api.herokuapp.com/dados/novo",leitura);
+  String energia = verificaEnergia();
 
+  Serial.println("verificando a energia");  
 
-   //salva("fatecexpo.fatecosasco.com.br:2651/rest/dados/166667",leitura2);
+  Serial.println(energia);  
+  
    
 
    //delay(120000); 
@@ -58,15 +80,14 @@ void loop(void)
 
 
 
-void salva(char url[200], float temp){
+void salva(char url[200], float temp){  
     //declarando as variaveis    
     Serial.println("----------------------->Montando rest");
     char response[200];
     char s1[26];
     String sensor1="{\"temperaturaAtual\":"; 
     sensor1.concat(temp);
-    sensor1.concat("\"dataAtual\": \"2018-05-03T21:26:22Z\",\"temEnergia\": true,\"sensorId\": 1}"); 
-
+    sensor1.concat(",\"temEnergia\": true}"); 
    
     
     Serial.println("sensor 1");
@@ -88,5 +109,48 @@ void salva(char url[200], float temp){
         
     http.disconnect();     
     Serial.println("----------------------->Post Finalizado");
+
+}
+
+String verificaEnergia(){
+
+   for(int i=10000; i>0; i--){
+    // le o sensor na pino analogico A0 e ajusta o valor lido ja que a saída do sensor é (1023)vcc/2 para corrente =0
+    sensorValue_aux = (analogRead(pinoSensor) -510);
+    // somam os quadrados das leituras.
+    valorSensor += pow(sensorValue_aux,2);
+    delay(1);
+  }
+ 
+  // finaliza o calculo da média quadratica e ajusta o valor lido para volts
+  valorSensor = (sqrt(valorSensor/ 10000)) * voltsporUnidade;
+  // calcula a corrente considerando a sensibilidade do sernsor (185 mV por amper)
+  valorCorrente = (valorSensor/sensibilidade);
+
+
+  //tratamento para possivel ruido
+  //O ACS712 para 30 Amperes é projetado para fazer leitura
+  // de valores alto acima de 0.25 Amperes até 30.
+  // por isso é normal ocorrer ruidos de até 0.20A
+  //por isso deve ser tratado
+  if(valorCorrente <= 0.095){
+    valorCorrente = 0;
+  }
+ 
+  valorSensor =0;
+ 
+ 
+  //Mostra o valor da corrente
+  Serial.print("Corrente : ");
+  // Irms
+  Serial.print(valorCorrente, 3);
+ 
+ 
+  //Calcula e mostra o valor da potencia
+  Serial.print(" Potencia (Consumo) : ");
+  Serial.print(valorCorrente * tensao);
+  Serial.println(" Watts ");
+
+  return "funfou";
 
 }
