@@ -70,3 +70,4 @@ class HTTP : public SIM800 {
     Result setHTTPSession(const char *uri);
     void parseJSONResponse(const char *buffer, unsigned int bufferSize, char *response);
 };
+

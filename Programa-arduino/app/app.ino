@@ -18,7 +18,7 @@ HTTP http(9600, RX_PIN, TX_PIN, RST_PIN,true);
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensor(&oneWire);
 
-//configuração do sensor de energia
+//configuraÃ§Ã£o do sensor de energia
 int pinoSensor =A0;
  
 int sensorValue_aux = 0;
@@ -68,7 +68,7 @@ void loop(void){
    enviaDados("https://umonitor-api.herokuapp.com/dados/sensor/1001",temperaturaSensor1, temEnergia);
 
    //------------------------------------------------------------------------------------------------------
-   
+    delay(200); 
    //Coleta os dados
    float temperaturaSensor2=sensor.getTempCByIndex(2);
 
@@ -81,7 +81,7 @@ void loop(void){
 
     //------------------------------------------------------------------------------------------------------
 
-   //Delay de 5 minutos ate a proxima verificação
+   //Delay de 5 minutos ate a proxima verificaÃ§Ã£o
    //delay(120000); 
     delay(120); 
 
@@ -89,36 +89,42 @@ void loop(void){
 
 
 //metodo enviaDados para API
-void enviaDados( char urlChar[200], float temp, String temEnergia){  
+void enviaDados( char url[200], float temp, String temEnergia){  
 
      //declarando as variaveis    
     Serial.println("---------------|  Montando rest");
-    char response[10];
-    char bodyChar[50];   
+    char response[200];
+    char bodyChar[75];   
 
-    //Montando body da requisição
-    String body="{\"temperaturaAtual\":"; 
+    //Montando body da requisicao
+    String body="{\"T\":"; 
     body.concat(temp);
-    body.concat(",\"temEnergia\":"); 
+    body.concat(",\"E\":"); 
     body.concat(temEnergia); 
     body.concat("}"); 
 
-    //convertendo de string para char
-    body.toCharArray(bodyChar,50);
+   Serial.println(body);
 
+    //convertendo de string para char
+    body.toCharArray(bodyChar,75);    
+    
+
+     delay(100); 
     //conectando ao sim800l
     http.configureBearer("movistar.es");   
+    delay(100); 
     http.connect();
 
     //realizando o request
     Serial.println("---------------|  Iniciando o Post");
-    http.post(urlChar,bodyChar, response);  
+    http.post(url,bodyChar, response);  
 
     //obtendo resposta
     Serial.println("---------------|  Response obtido");
     Serial.println(response);
-
-    //fechando conexão
+ 
+    delay(1500);
+    //fechando conexÃ£o
     http.disconnect();     
     Serial.println("---------------|  Post Finalizado");   
 }
@@ -127,14 +133,14 @@ void enviaDados( char urlChar[200], float temp, String temEnergia){
 String verificaEnergia(){
   
     for(int i=10000; i>0; i--){
-      // le o sensor na pino analogico A0 e ajusta o valor lido ja que a saída do sensor é (1023)vcc/2 para corrente =0
+      // le o sensor na pino analogico A0 e ajusta o valor lido ja que a saÃ­da do sensor Ã© (1023)vcc/2 para corrente =0
       sensorValue_aux = (analogRead(pinoSensor) -510);
       // somam os quadrados das leituras.
       valorSensor += pow(sensorValue_aux,2);
       delay(1);
     } 
     
-    // finaliza o calculo da média quadratica e ajusta o valor lido para volts
+    // finaliza o calculo da mÃ©dia quadratica e ajusta o valor lido para volts
     valorSensor = (sqrt(valorSensor/ 10000)) * voltsporUnidade;
     
     // calcula a corrente considerando a sensibilidade do sernsor (185 mV por amper)
@@ -144,11 +150,12 @@ String verificaEnergia(){
      Serial.println(valorCorrente);
 
     //validando se tem energia
-    if (valorCorrente < 0.4){
-     //não tem energia
+    if (valorCorrente < 0.40){
+     //nÃ£o tem energia
     return "false";
     }else {
      //tem energia
     return "true";
     }
 }
+
